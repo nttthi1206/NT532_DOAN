@@ -1,1 +1,5 @@
 /NT532_DOAN/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+data/raw/
