@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import sqlite3
 import os
-import time
+#import time
 import joblib
 
 from sleep_rules import calculate_stress_level, calculate_movement_score, evaluate_sleep_quality
@@ -166,66 +166,65 @@ if st.session_state.active_tab != "Theo dõi Real-time":
 else:
     # ------------------ GIAO DIỆN THEO DÕI REAL-TIME ------------------
     st.title("🌙 Theo dõi Giấc ngủ AIoT Dashboard")
-    placeholder = st.empty()
-
-    while True:
+    @st.fragment(run_every="2s")
+    def show_realtime_content():
         df = get_data(limit=100)
         
-        with placeholder.container():
-            if df.empty or len(df) < 5:
-                st.warning("⏳ Đang chờ thu thập dữ liệu từ phần cứng ESP32...")
-            else:
-                latest = df.iloc[-1]
+        if df.empty or len(df) < 5:
+            st.warning("⏳ Đang chờ thu thập dữ liệu từ phần cứng ESP32...")
+        else:
+            latest = df.iloc[-1]
+            
+            # Tính toán chỉ số Real-time
+            stress_score = calculate_stress_level(df['heart_rate'].values, df['spo2'].values)
+            mov_score, mov_status = calculate_movement_score(df.tail(30)[['accel_x', 'accel_y', 'accel_z']])
+            
+            if rf_model and scaler:
+                input_df = pd.DataFrame([{
+                    'Heart Rate': latest['heart_rate'], 'Physical Activity Level': mov_score,
+                    'Sleep Duration': 6.0, 'Stress Level': stress_score,
+                }])
                 
-                # Tính toán chỉ số Real-time
-                stress_score = calculate_stress_level(df['heart_rate'].values, df['spo2'].values)
-                mov_score, mov_status = calculate_movement_score(df.tail(30)[['accel_x', 'accel_y', 'accel_z']])
+                input_scaled = scaler.transform(input_df)
+                predicted_score = rf_model.predict(input_scaled)[0] * 10
                 
-                if rf_model and scaler:
-                    input_df = pd.DataFrame([{
-                        'Heart Rate': latest['heart_rate'], 'Physical Activity Level': mov_score,
-                        'Sleep Duration': 6.0, 'Stress Level': stress_score,
-                    }])
-                    
-                    input_scaled = scaler.transform(input_df)
-                    predicted_score = rf_model.predict(input_scaled)[0] * 10
-                    
-                    st.subheader("🧠 Trạng thái giấc ngủ (Real-time)")
-                    if predicted_score >= 80:
-                        st.success(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Ngủ sâu / Thư giãn**")
-                    elif predicted_score >= 60:
-                        st.info(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Ngủ nông**")
-                    else:
-                        st.error(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Thức / Trằn trọc**")
-                    
-                    temp = latest.get('temperature', 25.0)
-                    hum = latest.get('humidity', 60.0)
-                    alerts = []
-                    if temp > 28.5: alerts.append(f"Nhiệt độ cao ({temp:.1f}°C)")
-                    elif temp < 20.0: alerts.append(f"Nhiệt độ thấp ({temp:.1f}°C)")
-                    if hum > 75.0: alerts.append(f"Quá ẩm ({hum:.1f}%)")
-                    if alerts:
-                        st.warning("⚠️ Cảnh báo Môi trường: " + " | ".join(alerts))
+                st.subheader("🧠 Trạng thái giấc ngủ (Real-time)")
+                if predicted_score >= 80:
+                    st.success(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Ngủ sâu / Thư giãn**")
+                elif predicted_score >= 60:
+                    st.info(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Ngủ nông**")
+                else:
+                    st.error(f"Điểm AI: **{predicted_score:.1f}/100** - Trạng thái: **Thức / Trằn trọc**")
+                
+                temp = latest.get('temperature', 25.0)
+                hum = latest.get('humidity', 60.0)
+                alerts = []
+                if temp > 28.5: alerts.append(f"Nhiệt độ cao ({temp:.1f}°C)")
+                elif temp < 20.0: alerts.append(f"Nhiệt độ thấp ({temp:.1f}°C)")
+                if hum > 75.0: alerts.append(f"Quá ẩm ({hum:.1f}%)")
+                if alerts:
+                    st.warning("⚠️ Cảnh báo Môi trường: " + " | ".join(alerts))
 
-                st.markdown("---")
-                st.subheader("📊 Thông số Thời gian thực (1 phút qua)")
-                
-                col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
-                col1.metric("Nhịp tim", f"{latest['heart_rate']:.1f}")
-                col2.metric("SpO2", f"{latest['spo2']}%")
-                col3.metric("Mức độ Stress", stress_score)
-                col4.metric("Vận động", mov_status, f"{mov_score}/10")
-                col5.metric("Nhiệt độ", f"{latest.get('temperature', 0):.1f}°C")
-                col6.metric("Độ ẩm", f"{latest.get('humidity', 0):.1f}%")
-                col7.metric("Ánh sáng", f"{latest.get('light_lux', 0):.0f} lx")
-                
-                st.markdown("---")
-                col_chart1, col_chart2 = st.columns(2)
-                with col_chart1:
-                    st.subheader("❤️ Biểu đồ Nhịp tim & SpO2")
-                    st.line_chart(df.set_index("timestamp")[["heart_rate", "spo2"]])
-                with col_chart2:
-                    st.subheader("🏃 Gia tốc (Chuyển động cơ thể)")
-                    st.line_chart(df.set_index("timestamp")[["accel_x", "accel_y", "accel_z"]])
-                    
-        time.sleep(2)
+            st.markdown("---")
+            st.subheader("📊 Thông số Thời gian thực (1 phút qua)")
+            
+            col1, col2, col3, col4, col5, col6, col7 = st.columns(7)
+            col1.metric("Nhịp tim", f"{latest['heart_rate']:.1f}")
+            col2.metric("SpO2", f"{latest['spo2']}%")
+            col3.metric("Mức độ Stress", stress_score)
+            col4.metric("Vận động", mov_status, f"{mov_score}/10")
+            col5.metric("Nhiệt độ", f"{latest.get('temperature', 0):.1f}°C")
+            col6.metric("Độ ẩm", f"{latest.get('humidity', 0):.1f}%")
+            col7.metric("Ánh sáng", f"{latest.get('light_lux', 0):.0f} lx")
+            
+            st.markdown("---")
+            col_chart1, col_chart2 = st.columns(2)
+            with col_chart1:
+                st.subheader("❤️ Biểu đồ Nhịp tim & SpO2")
+                st.line_chart(df.set_index("timestamp")[["heart_rate", "spo2"]])
+            with col_chart2:
+                st.subheader("🏃 Gia tốc (Chuyển động cơ thể)")
+                st.line_chart(df.set_index("timestamp")[["accel_x", "accel_y", "accel_z"]])
+
+    # === SỬA: Gọi hàm vừa tạo thay cho time.sleep(2) ===
+    show_realtime_content()
