@@ -14,6 +14,6 @@
 // Sử dụng const để biến thành hằng số, tối ưu bộ nhớ RAM cho ESP32
 const char* ssid = "esp32";
 const char* password = "11122111";
-const char* mqtt_server = "192.168.137.1"; 
+const char* mqtt_server = "172.20.10.3"; 
 const int mqtt_port = 1883;
 const char* mqtt_topic = "sleep_aiot/body";
