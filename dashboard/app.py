@@ -6,6 +6,7 @@ from datetime import datetime
 import joblib
 import pandas as pd
 import streamlit as st
+import altair as alt
 
 from sleep_rules import (
     calculate_movement_score,
@@ -251,6 +252,50 @@ def get_data(limit=100):
     except Exception:
         return pd.DataFrame()
 
+def render_clean_chart(df, value_cols, y_domain=None):
+    chart_df = df[["timestamp"] + value_cols].copy()
+    # Ép kiểu sang datetime để Altair tự chia khoảng thời gian thông minh
+    chart_df["timestamp"] = pd.to_datetime(chart_df["timestamp"])
+    
+    # Chuyển sang dạng long-format để vẽ được nhiều đường trên cùng 1 biểu đồ
+    melted = chart_df.melt("timestamp", var_name="Chỉ số", value_name="Giá trị")
+
+    y_scale = alt.Scale(domain=y_domain) if y_domain else alt.Scale(zero=False)
+
+    chart = (
+        alt.Chart(melted)
+        .mark_line(strokeWidth=2.5)
+        .encode(
+            x=alt.X(
+                "timestamp:T",
+                axis=alt.Axis(
+                    format="%H:%M",      # Định dạng 09:30, 09:33... (đổi thành %H:%M:%S nếu muốn hiện giây)
+                    tickCount=5,         # Giới hạn chỉ hiện tối đa ~4-5 mốc thời gian
+                    labelAngle=0,        # Chữ nằm ngang, không bị xoay dọc
+                    title=None,
+                    grid=False,
+                ),
+            ),
+            y=alt.Y(
+                "Giá trị:Q",
+                scale=y_scale,
+                axis=alt.Axis(
+                    title=None,
+                    grid=True,
+                    gridDash=[4, 4],     # Đường lưới ngang nét đứt
+                    gridOpacity=0.25,
+                ),
+            ),
+            color=alt.Color("Chỉ số:N", legend=alt.Legend(orient="top", title=None)),
+            tooltip=[
+                alt.Tooltip("timestamp:T", title="Thời gian", format="%H:%M:%S"),
+                alt.Tooltip("Chỉ số:N"),
+                alt.Tooltip("Giá trị:Q", format=".1f"),
+            ],
+        )
+        .properties(height=280)
+    )
+    st.altair_chart(chart, use_container_width=True)
 
 def save_df_to_sqlite(df_sim):
     """Lưu dữ liệu giả lập vào bảng sensor_data để test cả màn hình Real-time."""
@@ -527,12 +572,10 @@ def render_detailed_report(rep, key_prefix="rep"):
         ch1, ch2 = st.columns(2)
         with ch1:
             st.markdown("**❤️ Nhịp tim (BPM) & SpO2 (%)**")
-            st.line_chart(df_night.set_index("timestamp")[["heart_rate", "spo2"]])
+            render_clean_chart(df_night, ["heart_rate", "spo2"])
         with ch2:
             st.markdown("**🏃 Gia tốc Chuyển động 3 trục (MPU6050)**")
-            st.line_chart(
-                df_night.set_index("timestamp")[["accel_x", "accel_y", "accel_z"]]
-            )
+            render_clean_chart(df_night, ["accel_x", "accel_y", "accel_z"])
 
 
 # ================= 4. KHỞI TẠO SESSION STATE =================
@@ -774,18 +817,12 @@ with tab_realtime:
         # --- KHỐI 3: BIỂU ĐỒ THỜI GIAN THỰC ---
         col_chart1, col_chart2 = st.columns(2)
         with col_chart1:
-            with st.container(border=True):
-                st.markdown("##### 📈 Đường biểu diễn Nhịp tim & SpO2 (100 mẫu gần nhất)")
-                st.line_chart(
-                    df.set_index("timestamp")[["heart_rate", "spo2"]], height=260
-                )
+            st.subheader("❤️ Biểu đồ Nhịp tim & SpO2")
+            render_clean_chart(df, ["heart_rate", "spo2"])
+
         with col_chart2:
-            with st.container(border=True):
-                st.markdown("##### 📈 Gia tốc Chuyển động cơ thể (3 trục X, Y, Z)")
-                st.line_chart(
-                    df.set_index("timestamp")[["accel_x", "accel_y", "accel_z"]],
-                    height=260,
-                )
+            st.subheader("🏃 Gia tốc (Chuyển động cơ thể)")
+            render_clean_chart(df, ["accel_x", "accel_y", "accel_z"])
 
         # --- KHỐI 4: XỬ LÝ TỰ ĐỘNG PHÂN TÍCH GEMINI & PHÁT HIỆN THỨC DẬY ---
         now_ts = time.time()
@@ -985,8 +1022,8 @@ with tab_simulator:
         sim_mode = st.radio(
             "Chọn phương thức giả lập:",
             [
-                "📋 Chọn từ 4 Kịch bản Giấc ngủ Mẫu (Khuyên dùng khi thuyết trình)",
-                "🎛️ Tự điều chỉnh từng thông số cảm biến (Custom Sliders)",
+                "📋 Chọn từ 4 Kịch bản Giấc ngủ Mẫu",
+                "🎛️ Tự điều chỉnh từng thông số cảm biến ",
             ],
             horizontal=True,
         )

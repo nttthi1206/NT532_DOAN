@@ -94,7 +94,7 @@ void setup() {
     // Đăng ký hàm callback bắt nhịp tim
     pox.setOnBeatDetectedCallback(onBeatDetected);
     // Tùy chỉnh LED hồng ngoại
-    pox.setIRLedCurrent(MAX30100_LED_CURR_8_5MA);
+    pox.setIRLedCurrent(MAX30100_LED_CURR_7_6MA);
   }
 }
 

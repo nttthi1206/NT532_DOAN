@@ -309,7 +309,7 @@ def analyze_sleep_with_gemini(metrics, rule_tips=None, api_key=None, model_name=
         fallback["error_detail"] = "Chưa cung cấp GEMINI_API_KEY (Đang hiển thị bản phân tích từ Hệ chuyên gia dự phòng)."
         return fallback
 
-    prompt = f"""Bạn là một Chuyên gia Y học Giấc ngủ và Kỹ sư AIoT. Hãy phân tích dữ liệu giấc ngủ thu thập từ hệ thống cảm biến (MAX30102, MPU6050, DHT22, BH1750) và mô hình Machine Learning dưới đây để tư vấn cho người dùng bằng tiếng Việt dễ hiểu, khoa học và cá nhân hóa.
+    prompt = f"""Bạn là một Chuyên gia Y học Giấc ngủ và Kỹ sư AIoT. Hãy phân tích dữ liệu giấc ngủ thu thập từ hệ thống cảm biến (MAX30100, MPU6050, DHT22, BH1750) và mô hình Machine Learning dưới đây để tư vấn cho người dùng bằng tiếng Việt dễ hiểu, khoa học và cá nhân hóa.
 
 DỮ LIỆU GIẤC NGỦ TỔNG HỢP:
 - Điểm chất lượng giấc ngủ (AI Random Forest dự đoán): {metrics['score']:.1f} / 100
