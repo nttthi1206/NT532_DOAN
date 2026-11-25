@@ -54,7 +54,7 @@ def evaluate_sleep_quality(score, temp_c=None, hum_pct=None, hr_bpm=None):
           " họng, bạn nên bật máy phun sương tạo ẩm."
       )
 
-  # 3. Quy tắc nhịp tim nghỉ ngơi khi ngủ (từ cảm biến MAX30102)
+  # 3. Quy tắc nhịp tim nghỉ ngơi khi ngủ (từ cảm biến MAX30100)
   if hr_bpm is not None:
     if hr_bpm > 85:
       recommendations.append(
